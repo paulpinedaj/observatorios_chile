@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Observatorios Astronómicos de Chile</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css" />
+    <style>
+        :root {
+            --bg-dark: #0a0a12;
+            --card-dark: #161624;
+            --text-primary: #e0e0e0;
+            --text-secondary: #aaaaaa;
+            --accent-color: #4fc3f7;
+            --accent-dark: #0288d1;
+            --footer-bg: #0c0c1a;
+            --gradient: linear-gradient(135deg, #4fc3f7 0%, #8e24aa 100%);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            position: relative;
+            overflow-x: hidden;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+            .leaflet-container .leaflet-control-attribution {
+    display: none !important;
+    }
+
+        /* Efecto de estrellas */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+        
+        .star {
+            position: absolute;
+            background-color: white;
+            border-radius: 50%;
+            animation: twinkle var(--duration) infinite ease-in-out;
+            opacity: 0;
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: 0; }
+            50% { opacity: var(--opacity); }
+        }
+        
+        /* Header */
+        header {
+            text-align: center;
+            padding: 3rem 1rem 2rem;
+            position: relative;
+            z-index: 1;
+            background: rgba(10, 10, 18, 0.8);
+            backdrop-filter: blur(1px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 1rem;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            background: var(--gradient);
+            border-radius: 3px;
+        }
+        
+        .title-icon {
+            font-size: 2.2rem;
+            margin-bottom: -5px;
+        }
+        
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            max-width: 700px;
+            margin: 0 auto 2rem;
+            font-weight: 300;
+        }
+        
+        /* Search */
+        .search-container {
+            max-width: 600px;
+            margin: 0 auto 0;
+            padding: 0 1rem;
+            position: relative;
+        }
+        
+        #searchInput {
+            width: 100%;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 30px;
+            background-color: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+            font-size: 1rem;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        #searchInput:focus {
+            outline: none;
+            background-color: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        #searchInput::placeholder {
+            color: var(--text-secondary);
+        }
+        main{
+            padding: 0 1rem;
+        }
+        /* Mapa */
+        .map-container {
+            width: 100%;
+            height: 700px;
+            margin: 0 auto 1rem;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Popup personalizado */
+        .custom-popup .leaflet-popup-content-wrapper {
+            background: var(--card-dark);
+            color: var(--text-primary);
+            border-radius: 8px;
+            box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .custom-popup .leaflet-popup-content {
+            margin: 10px 14px;
+            line-height: 1.5;
+            font-size: 0.9rem;
+        }
+        
+        .custom-popup .leaflet-popup-content img {
+            width: 100%;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        
+        .custom-popup .leaflet-popup-tip {
+            background: var(--card-dark);
+        }
+        
+        .popup-title {
+            font-size: 1.1rem;
+            color: var(--accent-color);
+            margin-bottom: 5px;
+        }
+        
+        .popup-meta {
+            display: flex;
+            gap: 10px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        
+        .popup-meta span {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        
+        .popup-specs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 0.8rem;
+            margin: 10px 0;
+        }
+        
+        .popup-spec {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .popup-spec-label {
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+        }
+        
+        .popup-spec-value {
+            font-weight: 500;
+        }
+        
+        /* Grid de observatorios */
+        .observatories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin: 0 auto;
+            flex: 1;
+        }
+        
+        /* Tarjeta de observatorio */
+        .observatory-card {
+            background-color: var(--card-dark);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            opacity: 0.9;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .observatory-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+            opacity: 1;
+            border-color: rgba(79, 195, 247, 0.3);
+        }
+        
+        .observatory-card.active {
+            border: 2px solid var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(79, 195, 247, 0.2);
+        }
+        
+        /* Swiper Gallery */
+        .swiper {
+            width: 100%;
+            height: 200px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .swiper-slide {
+            text-align: center;
+            font-size: 18px;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .swiper-slide img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .swiper-button-next, 
+        .swiper-button-prev {
+            color: white;
+            background: rgba(0, 0, 0, 0.5);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            backdrop-filter: blur(5px);
+        }
+        
+        .swiper-button-next::after, 
+        .swiper-button-prev::after {
+            font-size: 1rem;
+        }
+        
+        .observatory-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            z-index: 10;
+        }
+        
+        .observatory-content {
+            padding: 1.2rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .observatory-header {
+            margin-bottom: 12px;
+        }
+        
+        .observatory-title {
+            font-size: 1.4rem;
+            margin-bottom: 0.3rem;
+            color: var(--accent-color);
+        }
+        
+        .observatory-location {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+        
+        .observatory-location i {
+            color: var(--accent-color);
+            font-size: 0.9rem;
+        }
+        
+        .observatory-specs {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .spec-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .spec-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .spec-value {
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+        
+        .observatory-technical {
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 12px 0;
+        }
+        
+        .tech-title {
+            font-size: 0.8rem;
+            color: var(--accent-color);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .tech-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+        
+        .tech-item {
+            background: rgba(79, 195, 247, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: var(--accent-color);
+        }
+        
+        .observatory-description {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            flex: 1;
+        }
+        
+        .observatory-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .observatory-countries {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .countries-title {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        
+        .countries-list {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .country-item {
+            display: flex;
+            align-items: center;
+        }
+        
+        .country-flag {
+            width: 20px;
+            height: 15px;
+            border-radius: 2px;
+            object-fit: cover;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        
+        .observatory-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent-color);
+            text-decoration: none;
+            font-size: 0.8rem;
+            transition: color 0.3s ease;
+            padding: 5px 10px;
+            border-radius: 4px;
+            background: rgba(79, 195, 247, 0.1);
+        }
+        
+        .observatory-link:hover {
+            color: var(--accent-dark);
+            background: rgba(79, 195, 247, 0.2);
+        }
+        
+        /* No results */
+        .no-results {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+        
+        /* Footer */
+        footer {
+            background-color: var(--footer-bg);
+            padding: 2rem 1rem;
+            margin-top: 3rem;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            opacity: 0.9;
+        }
+        
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .footer-logo {
+            width: 120px;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+        
+        .footer-logo:hover {
+            opacity: 1;
+        }
+        
+        .footer-credit {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        .footer-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .footer-link:hover {
+            color: var(--accent-dark);
+            text-decoration: underline;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .title-icon {
+                font-size: 1.8rem;
+            }
+            
+            .observatories-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .observatory-specs {
+                grid-template-columns: 1fr;
+            }
+            
+            .swiper {
+                height: 200px;
+            }
+            
+            .map-container {
+                height: 400px;
+                margin: 1rem 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Efecto de estrellas -->
+    <div class="stars" id="stars"></div>
+    
+    <header>
+        <div class="header-content">
+            <h1>
+                <i class="fas fa-satellite-dish title-icon"></i>
+                Observatorios de Chile
+            </h1>
+            <p class="subtitle">Los cielos más claros del planeta albergan los telescopios más avanzados de la humanidad</p>
+            
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="Buscar por nombre, ubicación o instrumentos...">
+            </div>
+        </div>
+    </header>
+    
+    <main>
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+        
+        <div class="observatories-grid" id="observatoriesList">
+            <!-- ALMA -->
+            <div class="observatory-card" data-id="alma" data-lat="-23.0193" data-lng="-67.7532">
+                <div class="swiper">
+                    <div class="swiper-wrapper">
+                        <div class="swiper-slide">
+                            <img src="https://www.almaobservatory.org/wp-content/uploads/2020/04/Antenas-ALMA-46-scaled.jpg" alt="ALMA Observatory">
+                        </div>
+                        <div class="swiper-slide">
+                            <img src="https://www.almaobservatory.org/wp-content/uploads/2020/04/Antenas-ALMA-46-scaled.jpg" alt="ALMA Antennas">
+                        </div>
+                        <div class="swiper-slide">
+                            <img src="https://www.almaobservatory.org/wp-content/uploads/2020/04/Antenas-ALMA-46-scaled.jpg" alt="ALMA Correlator">
+                        </div>
+                    </div>
+                    <div class="swiper-button-next"></div>
+                    <div class="swiper-button-prev"></div>
+                </div>
+                <div class="observatory-badge">
+                    <i class="fas fa-medal"></i> Premio Nobel
+                </div>
+                <div class="observatory-content">
+                    <div class="observatory-header">
+                        <h3 class="observatory-title">ALMA</h3>
+                        <div class="observatory-location">
+                            <i class="fas fa-map-marker-alt"></i> Llano de Chajnantor, Antofagasta
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-specs">
+                        <div class="spec-item">
+                            <span class="spec-label">Altura</span>
+                            <span class="spec-value">5,000 msnm</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Operación</span>
+                            <span class="spec-value">2011</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Telescopios</span>
+                            <span class="spec-value">66 antenas</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Diámetro</span>
+                            <span class="spec-value">7-12m c/u</span>
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-technical">
+                        <div class="tech-title">
+                            <i class="fas fa-wave-square"></i> Frecuencias
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-item">Ondas milimétricas</span>
+                            <span class="tech-item">Submilimétricas</span>
+                            <span class="tech-item">31-950 GHz</span>
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-technical">
+                        <div class="tech-title">
+                            <i class="fas fa-star"></i> Objetos de estudio
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-item">Universo frío</span>
+                            <span class="tech-item">Formación estelar</span>
+                            <span class="tech-item">Moléculas orgánicas</span>
+                            <span class="tech-item">Discos protoplanetarios</span>
+                        </div>
+                    </div>
+                    
+                    <p class="observatory-description">
+                        El mayor proyecto astronómico del mundo en ondas milimétricas y submilimétricas. Revolucionó el estudio del universo frío con descubrimientos de moléculas orgánicas complejas en el espacio.
+                    </p>
+                    
+                    <div class="observatory-footer">
+                        <div class="observatory-countries">
+                            <div class="countries-title">Participan:</div>
+                            <div class="countries-list">
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/cl.png" class="country-flag" alt="Chile">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/us.png" class="country-flag" alt="EEUU">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/jp.png" class="country-flag" alt="Japón">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/eu.png" class="country-flag" alt="Europa">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <a href="https://www.almaobservatory.org" target="_blank" class="observatory-link">
+                            <i class="fas fa-external-link-alt"></i> Sitio web
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Paranal (VLT) -->
+            <div class="observatory-card" data-id="paranal" data-lat="-24.6275" data-lng="-70.4042">
+                <div class="swiper">
+                    <div class="swiper-wrapper">
+                        <div class="swiper-slide">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a4/Paranal_and_the_Pacific_at_sunset_%28dsc4088%2C_retouched%2C_cropped%29.jpg" alt="Paranal Observatory">
+                        </div>
+                        <div class="swiper-slide">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a4/Paranal_and_the_Pacific_at_sunset_%28dsc4088%2C_retouched%2C_cropped%29.jpg" alt="VLT Telescopes">
+                        </div>
+                        <div class="swiper-slide">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a4/Paranal_and_the_Pacific_at_sunset_%28dsc4088%2C_retouched%2C_cropped%29.jpg" alt="VLT at Night">
+                        </div>
+                    </div>
+                    <div class="swiper-button-next"></div>
+                    <div class="swiper-button-prev"></div>
+                </div>
+                <div class="observatory-badge">
+                    <i class="fas fa-star"></i> Avanzado
+                </div>
+                <div class="observatory-content">
+                    <div class="observatory-header">
+                        <h3 class="observatory-title">Paranal (VLT)</h3>
+                        <div class="observatory-location">
+                            <i class="fas fa-map-marker-alt"></i> Cerro Paranal, Antofagasta
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-specs">
+                        <div class="spec-item">
+                            <span class="spec-label">Altura</span>
+                            <span class="spec-value">2,635 msnm</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Operación</span>
+                            <span class="spec-value">1998-2001</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Telescopios</span>
+                            <span class="spec-value">4 (8.2m) + 4 (1.8m)</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Diámetro</span>
+                            <span class="spec-value">8.2m c/u</span>
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-technical">
+                        <div class="tech-title">
+                            <i class="fas fa-wave-square"></i> Frecuencias
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-item">Óptico</span>
+                            <span class="tech-item">Infrarrojo cercano</span>
+                            <span class="tech-item">300-2500 nm</span>
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-technical">
+                        <div class="tech-title">
+                            <i class="fas fa-star"></i> Objetos de estudio
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-item">Exoplanetas</span>
+                            <span class="tech-item">Agujeros negros</span>
+                            <span class="tech-item">Galaxias distantes</span>
+                            <span class="tech-item">Materia oscura</span>
+                        </div>
+                    </div>
+                    
+                    <p class="observatory-description">
+                        El Very Large Telescope es el observatorio óptico más avanzado del mundo. Sus cuatro telescopios de 8.2m pueden trabajar combinados como interferómetro, logrando una resolución equivalente a un telescopio de 130m.
+                    </p>
+                    
+                    <div class="observatory-footer">
+                        <div class="observatory-countries">
+                            <div class="countries-title">Participan:</div>
+                            <div class="countries-list">
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/cl.png" class="country-flag" alt="Chile">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/de.png" class="country-flag" alt="Alemania">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/fr.png" class="country-flag" alt="Francia">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/gb.png" class="country-flag" alt="Reino Unido">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/eu.png" class="country-flag" alt="Europa">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <a href="https://www.eso.org/public/teles-instr/paranal" target="_blank" class="observatory-link">
+                            <i class="fas fa-external-link-alt"></i> Sitio web
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- La Silla -->
+            <div class="observatory-card" data-id="lasilla" data-lat="-29.2567" data-lng="-70.7300">
+                <div class="swiper">
+                    <div class="swiper-wrapper">
+                        <div class="swiper-slide">
+                            <img src="https://cdn.eso.org/images/screen/ib-la-silla08.jpg" alt="La Silla Observatory">
+                        </div>
+                        <div class="swiper-slide">
+                            <img src="https://cdn.eso.org/images/screen/ib-la-silla08.jpg" alt="La Silla Telescopes">
+                        </div>
+                        <div class="swiper-slide">
+                            <img src="https://cdn.eso.org/images/screen/ib-la-silla08.jpg" alt="La Silla Night">
+                        </div>
+                    </div>
+                    <div class="swiper-button-next"></div>
+                    <div class="swiper-button-prev"></div>
+                </div>
+                <div class="observatory-content">
+                    <div class="observatory-header">
+                        <h3 class="observatory-title">La Silla</h3>
+                        <div class="observatory-location">
+                            <i class="fas fa-map-marker-alt"></i> La Higuera, Coquimbo
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-specs">
+                        <div class="spec-item">
+                            <span class="spec-label">Altura</span>
+                            <span class="spec-value">2,400 msnm</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Operación</span>
+                            <span class="spec-value">1964</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Telescopios</span>
+                            <span class="spec-value">18 telescopios</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Diámetro</span>
+                            <span class="spec-value">3.6m (principal)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-technical">
+                        <div class="tech-title">
+                            <i class="fas fa-wave-square"></i> Frecuencias
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-item">Óptico</span>
+                            <span class="tech-item">Infrarrojo</span>
+                            <span class="tech-item">350-1000 nm</span>
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-technical">
+                        <div class="tech-title">
+                            <i class="fas fa-star"></i> Objetos de estudio
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-item">Exoplanetas</span>
+                            <span class="tech-item">Supernovas</span>
+                            <span class="tech-item">Estrellas variables</span>
+                            <span class="tech-item">Asteroides</span>
+                        </div>
+                    </div>
+                    
+                    <p class="observatory-description">
+                        Uno de los observatorios más productivos del mundo, con más de 300 publicaciones científicas anuales. Alberga el famoso cazador de exoplanetas HARPS, instrumento que ha descubierto cientos de planetas extrasolares.
+                    </p>
+                    
+                    <div class="observatory-footer">
+                        <div class="observatory-countries">
+                            <div class="countries-title">Participan:</div>
+                            <div class="countries-list">
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/cl.png" class="country-flag" alt="Chile">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/eu.png" class="country-flag" alt="Europa">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/ch.png" class="country-flag" alt="Suiza">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <a href="https://www.eso.org/public/teles-instr/lasilla" target="_blank" class="observatory-link">
+                            <i class="fas fa-external-link-alt"></i> Sitio web
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Cerro Tololo -->
+            <div class="observatory-card" data-id="tololo" data-lat="-30.1697" data-lng="-70.8067">
+                <div class="swiper">
+                    <div class="swiper-wrapper">
+                        <div class="swiper-slide">
+                            <img src="https://storage.noirlab.edu/media/archives/images/screen/iotw2331a.jpg" alt="Cerro Tololo Observatory">
+                        </div>
+                        <div class="swiper-slide">
+                            <img src="https://storage.noirlab.edu/media/archives/images/screen/iotw2331a.jpg" alt="Tololo Telescopes">
+                        </div>
+                        <div class="swiper-slide">
+                            <img src="https://storage.noirlab.edu/media/archives/images/screen/iotw2331a.jpg" alt="Tololo at Night">
+                        </div>
+                    </div>
+                    <div class="swiper-button-next"></div>
+                    <div class="swiper-button-prev"></div>
+                </div>
+                <div class="observatory-content">
+                    <div class="observatory-header">
+                        <h3 class="observatory-title">Cerro Tololo</h3>
+                        <div class="observatory-location">
+                            <i class="fas fa-map-marker-alt"></i> Vicuña, Coquimbo
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-specs">
+                        <div class="spec-item">
+                            <span class="spec-label">Altura</span>
+                            <span class="spec-value">2,200 msnm</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Operación</span>
+                            <span class="spec-value">1967</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Telescopios</span>
+                            <span class="spec-value">7 telescopios</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Diámetro</span>
+                            <span class="spec-value">4m (principal)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-technical">
+                        <div class="tech-title">
+                            <i class="fas fa-wave-square"></i> Frecuencias
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-item">Óptico</span>
+                            <span class="tech-item">Visible</span>
+                            <span class="tech-item">300-1100 nm</span>
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-technical">
+                        <div class="tech-title">
+                            <i class="fas fa-star"></i> Objetos de estudio
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-item">Energía oscura</span>
+                            <span class="tech-item">Cosmología</span>
+                            <span class="tech-item">Estructura del universo</span>
+                            <span class="tech-item">Supernovas</span>
+                        </div>
+                    </div>
+                    
+                    <p class="observatory-description">
+                        Hogar de la DECam (Cámara de Energía Oscura) que mapeó 300 millones de galaxias. Participó activamente en el descubrimiento de la aceleración de la expansión del universo (Premio Nobel 2011).
+                    </p>
+                    
+                    <div class="observatory-footer">
+                        <div class="observatory-countries">
+                            <div class="countries-title">Participan:</div>
+                            <div class="countries-list">
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/cl.png" class="country-flag" alt="Chile">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/us.png" class="country-flag" alt="EEUU">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/br.png" class="country-flag" alt="Brasil">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <a href="https://www.ctio.noao.edu" target="_blank" class="observatory-link">
+                            <i class="fas fa-external-link-alt"></i> Sitio web
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Gemini Sur -->
+            <div class="observatory-card" data-id="gemini" data-lat="-30.2406" data-lng="-70.7367">
+                <div class="swiper">
+                    <div class="swiper-wrapper">
+                        <div class="swiper-slide">
+                            <img src="https://storage.noirlab.edu/media/archives/images/large/noirlab-djI00040.jpg" alt="Gemini South Observatory">
+                        </div>
+                        <div class="swiper-slide">
+                            <img src="https://storage.noirlab.edu/media/archives/images/large/noirlab-djI00040.jpg" alt="Gemini Interior">
+                        </div>
+                        <div class="swiper-slide">
+                            <img src="https://storage.noirlab.edu/media/archives/images/large/noirlab-djI00040.jpg" alt="Gemini at Night">
+                        </div>
+                    </div>
+                    <div class="swiper-button-next"></div>
+                    <div class="swiper-button-prev"></div>
+                </div>
+                <div class="observatory-content">
+                    <div class="observatory-header">
+                        <h3 class="observatory-title">Gemini Sur</h3>
+                        <div class="observatory-location">
+                            <i class="fas fa-map-marker-alt"></i> Cerro Pachón, Coquimbo
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-specs">
+                        <div class="spec-item">
+                            <span class="spec-label">Altura</span>
+                            <span class="spec-value">2,700 msnm</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Operación</span>
+                            <span class="spec-value">2002</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Telescopios</span>
+                            <span class="spec-value">1 (gemelo en Hawaii)</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Diámetro</span>
+                            <span class="spec-value">8.1m</span>
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-technical">
+                        <div class="tech-title">
+                            <i class="fas fa-wave-square"></i> Frecuencias
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-item">Óptico</span>
+                            <span class="tech-item">Infrarrojo</span>
+                            <span class="tech-item">350-5000 nm</span>
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-technical">
+                        <div class="tech-title">
+                            <i class="fas fa-star"></i> Objetos de estudio
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-item">Exoplanetas</span>
+                            <span class="tech-item">Nebulosas</span>
+                            <span class="tech-item">Galaxias activas</span>
+                            <span class="tech-item">Estrellas jóvenes</span>
+                        </div>
+                    </div>
+                    
+                    <p class="observatory-description">
+                        Parte del Observatorio Gemini con su gemelo en Hawaii, permitiendo cobertura de todo el cielo. Cuenta con óptica adaptativa de última generación para corrección de turbulencia atmosférica.
+                    </p>
+                    
+                    <div class="observatory-footer">
+                        <div class="observatory-countries">
+                            <div class="countries-title">Participan:</div>
+                            <div class="countries-list">
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/cl.png" class="country-flag" alt="Chile">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/us.png" class="country-flag" alt="EEUU">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/ca.png" class="country-flag" alt="Canadá">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/br.png" class="country-flag" alt="Brasil">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/ar.png" class="country-flag" alt="Argentina">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <a href="https://www.gemini.edu" target="_blank" class="observatory-link">
+                            <i class="fas fa-external-link-alt"></i> Sitio web
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Las Campanas -->
+            <div class="observatory-card" data-id="campanas" data-lat="-29.0083" data-lng="-70.6939">
+                <div class="swiper">
+                    <div class="swiper-wrapper">
+                        <div class="swiper-slide">
+                            <img src="https://circuloastronomico.cl/imagenes/observ/GMT/gmt_noche_2015.jpg" alt="Las Campanas Observatory">
+                        </div>
+                        <div class="swiper-slide">
+                            <img src="https://circuloastronomico.cl/imagenes/observ/GMT/gmt_noche_2015.jpg" alt="Magellan Telescopes">
+                        </div>
+                        <div class="swiper-slide">
+                            <img src="https://circuloastronomico.cl/imagenes/observ/GMT/gmt_noche_2015.jpg" alt="Campanas at Night">
+                        </div>
+                    </div>
+                    <div class="swiper-button-next"></div>
+                    <div class="swiper-button-prev"></div>
+                </div>
+                <div class="observatory-content">
+                    <div class="observatory-header">
+                        <h3 class="observatory-title">Las Campanas</h3>
+                        <div class="observatory-location">
+                            <i class="fas fa-map-marker-alt"></i> Región de Atacama
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-specs">
+                        <div class="spec-item">
+                            <span class="spec-label">Altura</span>
+                            <span class="spec-value">2,500 msnm</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Operación</span>
+                            <span class="spec-value">1971</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Telescopios</span>
+                            <span class="spec-value">6 telescopios</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Diámetro</span>
+                            <span class="spec-value">6.5m (Magallanes)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-technical">
+                        <div class="tech-title">
+                            <i class="fas fa-wave-square"></i> Frecuencias
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-item">Óptico</span>
+                            <span class="tech-item">Visible</span>
+                            <span class="tech-item">300-1000 nm</span>
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-technical">
+                        <div class="tech-title">
+                            <i class="fas fa-star"></i> Objetos de estudio
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-item">Supernovas</span>
+                            <span class="tech-item">Energía oscura</span>
+                            <span class="tech-item">Materia oscura</span>
+                            <span class="tech-item">Estructura cósmica</span>
+                        </div>
+                    </div>
+                    
+                    <p class="observatory-description">
+                        Alberga los telescopios Magallanes de 6.5m. Famoso por estudios de supernovas que llevaron al descubrimiento de la energía oscura (Premio Nobel 2011). Futuro hogar del Giant Magellan Telescope (GMT).
+                    </p>
+                    
+                    <div class="observatory-footer">
+                        <div class="observatory-countries">
+                            <div class="countries-title">Participan:</div>
+                            <div class="countries-list">
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/cl.png" class="country-flag" alt="Chile">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/us.png" class="country-flag" alt="EEUU">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/kr.png" class="country-flag" alt="Corea">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <a href="https://www.lco.cl" target="_blank" class="observatory-link">
+                            <i class="fas fa-external-link-alt"></i> Sitio web
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ELT (En construcción) -->
+            <div class="observatory-card" data-id="elt" data-lat="-24.5892" data-lng="-70.1917">
+                <div class="swiper">
+                    <div class="swiper-wrapper">
+                        <div class="swiper-slide">
+                            <img src="https://cloudfront-us-east-1.images.arcpublishing.com/metroworldnews/XZQFCMLSJRFVXLDXUYIKADKRHQ.jpeg" alt="ELT Construction">
+                        </div>
+                        <div class="swiper-slide">
+                            <img src="https://cloudfront-us-east-1.images.arcpublishing.com/metroworldnews/XZQFCMLSJRFVXLDXUYIKADKRHQ.jpeg" alt="ELT Design">
+                        </div>
+                        <div class="swiper-slide">
+                            <img src="https://cloudfront-us-east-1.images.arcpublishing.com/metroworldnews/XZQFCMLSJRFVXLDXUYIKADKRHQ.jpeg" alt="ELT Concept">
+                        </div>
+                    </div>
+                    <div class="swiper-button-next"></div>
+                    <div class="swiper-button-prev"></div>
+                </div>
+                <div class="observatory-badge" style="background-color: #8e24aa;">
+                    <i class="fas fa-hard-hat"></i> En construcción
+                </div>
+                <div class="observatory-content">
+                    <div class="observatory-header">
+                        <h3 class="observatory-title">ELT (Extremely Large Telescope)</h3>
+                        <div class="observatory-location">
+                            <i class="fas fa-map-marker-alt"></i> Cerro Armazones, Antofagasta
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-specs">
+                        <div class="spec-item">
+                            <span class="spec-label">Altura</span>
+                            <span class="spec-value">3,046 msnm</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Operación</span>
+                            <span class="spec-value">2027 (est.)</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Telescopios</span>
+                            <span class="spec-value">1 (espejo segmentado)</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Diámetro</span>
+                            <span class="spec-value">39.3m</span>
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-technical">
+                        <div class="tech-title">
+                            <i class="fas fa-wave-square"></i> Frecuencias
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-item">Óptico</span>
+                            <span class="tech-item">Infrarrojo cercano</span>
+                            <span class="tech-item">300-2500 nm</span>
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-technical">
+                        <div class="tech-title">
+                            <i class="fas fa-star"></i> Objetos de estudio
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-item">Exoplanetas</span>
+                            <span class="tech-item">Primeras galaxias</span>
+                            <span class="tech-item">Agujeros negros</span>
+                            <span class="tech-item">Vida extraterrestre</span>
+                        </div>
+                    </div>
+                    
+                    <p class="observatory-description">
+                        Será el telescopio óptico más grande del mundo, con un espejo primario de 39 metros compuesto por 798 segmentos hexagonales. Podrá captar 100 millones de veces más luz que el ojo humano.
+                    </p>
+                    
+                    <div class="observatory-footer">
+                        <div class="observatory-countries">
+                            <div class="countries-title">Participan:</div>
+                            <div class="countries-list">
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/cl.png" class="country-flag" alt="Chile">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/eu.png" class="country-flag" alt="Europa">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <a href="https://www.eso.org/public/teles-instr/elt" target="_blank" class="observatory-link">
+                            <i class="fas fa-external-link-alt"></i> Sitio web
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- TAO -->
+            <div class="observatory-card" data-id="tao" data-lat="-23.0292" data-lng="-67.7556">
+                <div class="swiper">
+                    <div class="swiper-wrapper">
+                        <div class="swiper-slide">
+                            <img src="https://laiyka.com/wp-content/uploads/2024/05/observatory-7079057_1280.jpg" alt="TAO Observatory">
+                        </div>
+                        <div class="swiper-slide">
+                            <img src="https://laiyka.com/wp-content/uploads/2024/05/observatory-7079057_1280.jpg" alt="TAO Telescope">
+                        </div>
+                        <div class="swiper-slide">
+                            <img src="https://laiyka.com/wp-content/uploads/2024/05/observatory-7079057_1280.jpg" alt="TAO Location">
+                        </div>
+                    </div>
+                    <div class="swiper-button-next"></div>
+                    <div class="swiper-button-prev"></div>
+                </div>
+                <div class="observatory-badge">
+                    <i class="fas fa-mountain"></i> Más alto (5,640m)
+                </div>
+                <div class="observatory-content">
+                    <div class="observatory-header">
+                        <h3 class="observatory-title">TAO</h3>
+                        <div class="observatory-location">
+                            <i class="fas fa-map-marker-alt"></i> Cerro Chajnantor, Antofagasta
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-specs">
+                        <div class="spec-item">
+                            <span class="spec-label">Altura</span>
+                            <span class="spec-value">5,640 msnm</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Operación</span>
+                            <span class="spec-value">2024</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Telescopios</span>
+                            <span class="spec-value">1</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Diámetro</span>
+                            <span class="spec-value">6.5m</span>
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-technical">
+                        <div class="tech-title">
+                            <i class="fas fa-wave-square"></i> Frecuencias
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-item">Infrarrojo medio</span>
+                            <span class="tech-item">2-38 μm</span>
+                            <span class="tech-item">Bajas interferencias</span>
+                        </div>
+                    </div>
+                    
+                    <div class="observatory-technical">
+                        <div class="tech-title">
+                            <i class="fas fa-star"></i> Objetos de estudio
+                        </div>
+                        <div class="tech-list">
+                            <span class="tech-item">Formación planetaria</span>
+                            <span class="tech-item">Polvo interestelar</span>
+                            <span class="tech-item">Núcleos galácticos</span>
+                            <span class="tech-item">Supernovas</span>
+                        </div>
+                    </div>
+                    
+                    <p class="observatory-description">
+                        El observatorio astronómico más alto del mundo (Récord Guinness 2024). Especializado en infrarrojo medio para estudiar formación planetaria y polvo interestelar en condiciones atmosféricas excepcionales.
+                    </p>
+                    
+                    <div class="observatory-footer">
+                        <div class="observatory-countries">
+                            <div class="countries-title">Participan:</div>
+                            <div class="countries-list">
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/cl.png" class="country-flag" alt="Chile">
+                                </div>
+                                <div class="country-item">
+                                    <img src="https://flagcdn.com/w20/jp.png" class="country-flag" alt="Japón">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <a href="https://www.ioa.s.u-tokyo.ac.jp/en/atacama" target="_blank" class="observatory-link">
+                            <i class="fas fa-external-link-alt"></i> Sitio web
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <img src="http://skeleton.cl/logo/logo-skeleton.svg" alt="Skeleton Logo" class="footer-logo">
+            <p class="footer-credit">Desarrollado por <a href="https://skeleton.cl" class="footer-link">Paul Pineda</a> <br>Skeleton.cl</p>
+        </div>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>
+    <script>
+        // Inicializar todos los sliders Swiper
+        document.addEventListener('DOMContentLoaded', function() {
+            const swipers = document.querySelectorAll('.swiper');
+            swipers.forEach(swiperEl => {
+                new Swiper(swiperEl, {
+                    navigation: {
+                        nextEl: '.swiper-button-next',
+                        prevEl: '.swiper-button-prev',
+                    },
+                    loop: true,
+                    autoplay: {
+                        delay: 5000,
+                        disableOnInteraction: false,
+                    },
+                });
+            });
+        });
+        
+        // Efecto de estrellas
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            const starsCount = 200;
+            
+            for (let i = 0; i < starsCount; i++) {
+                const star = document.createElement('div');
+                star.classList.add('star');
+                
+                // Posición aleatoria
+                const x = Math.random() * 100;
+                const y = Math.random() * 100;
+                
+                // Tamaño aleatorio (1-3px)
+                const size = Math.random() * 2 + 1;
+                
+                // Opacidad y duración aleatoria
+                const opacity = Math.random() * 0.7 + 0.3;
+                const duration = Math.random() * 5 + 3;
+                
+                star.style.left = `${x}%`;
+                star.style.top = `${y}%`;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.setProperty('--opacity', opacity);
+                star.style.setProperty('--duration', `${duration}s`);
+                
+                // Retraso aleatorio para el parpadeo
+                star.style.animationDelay = `${Math.random() * 5}s`;
+                
+                starsContainer.appendChild(star);
+            }
+        }
+        
+        // Mapa Leaflet
+        function initMap() {
+            const map = L.map('map').setView([-30.0000, -71.0000], 0);
+            
+            // Capas base
+            const streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 12,
+                attribution: ''
+            });
+            
+            const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 12,
+                attribution: ''
+            });
+            
+            streetLayer.addTo(map);
+            
+            // Control de capas
+            const layerControl = L.control.layers({
+                "🛣️ Plano": streetLayer,
+                "🛰️ Satélite": satelliteLayer
+            }).addTo(map);
+            
+            // Icono personalizado
+            const observatoryIcon = L.icon({
+                iconUrl: './img/antena.png',
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32]
+            });
+            
+            // Marcadores y eventos
+            const cards = document.querySelectorAll('.observatory-card');
+            const markers = [];
+            
+            cards.forEach(card => {
+                const id = card.getAttribute('data-id');
+                const lat = parseFloat(card.getAttribute('data-lat'));
+                const lng = parseFloat(card.getAttribute('data-lng'));
+                const title = card.querySelector('.observatory-title').textContent;
+                const location = card.querySelector('.observatory-location').textContent.replace('📍', '').trim();
+                const image = card.querySelector('.swiper-slide img').src;
+                const specs = Array.from(card.querySelectorAll('.spec-item')).map(item => {
+                    return {
+                        label: item.querySelector('.spec-label').textContent,
+                        value: item.querySelector('.spec-value').textContent
+                    };
+                });
+                
+                const techItems = Array.from(card.querySelectorAll('.tech-item')).map(item => item.textContent);
+                
+                const marker = L.marker([lat, lng], {
+                    icon: observatoryIcon,
+                    title: title
+                }).addTo(map);
+                
+                // Popup personalizado
+                const popupContent = `
+                    <div class="popup-content">
+                        <img src="${image}" alt="${title}">
+                        <div class="popup-title">${title}</div>
+                        <div class="popup-meta">
+                            <span><i class="fas fa-map-marker-alt"></i> ${location}</span>
+                            <span><i class="fas fa-mountain"></i> ${specs.find(s => s.label === 'Altura').value}</span>
+                        </div>
+                        <div class="popup-specs">
+                            <div class="popup-spec">
+                                <span class="popup-spec-label">Operación</span>
+                                <span class="popup-spec-value">${specs.find(s => s.label === 'Operación').value}</span>
+                            </div>
+                            <div class="popup-spec">
+                                <span class="popup-spec-label">Telescopios</span>
+                                <span class="popup-spec-value">${specs.find(s => s.label === 'Telescopios').value}</span>
+                            </div>
+                            <div class="popup-spec">
+                                <span class="popup-spec-label">Diámetro</span>
+                                <span class="popup-spec-value">${specs.find(s => s.label === 'Diámetro').value}</span>
+                            </div>
+                        </div>
+                        <div class="tech-title" style="margin-top: 8px;">
+                            <i class="fas fa-star"></i> Estudia: ${techItems.slice(0, 3).join(', ')}
+                        </div>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent, {
+            className: 'custom-popup',
+            maxWidth: 320
+        });
+
+        // Eventos de marcador
+        marker.on('click', function() {
+            // Scroll a la tarjeta correspondiente
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Resaltar tarjeta
+            cards.forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            
+            // Centrar mapa en el marcador con offset vertical
+            const targetLatLng = L.latLng(lat, lng);
+            const offsetY = 230; // Ajusta este valor (positivo = más abajo)
+            const offsetLatLng = map.unproject(
+                map.project(targetLatLng).subtract([0, offsetY])
+            );
+            
+            map.setView(offsetLatLng, 6, { animate: true });
+        });
+
+        // Eventos de tarjeta
+        card.addEventListener('mouseenter', function() {
+            marker.openPopup();
+            // Centrar con offset también para hover
+            const targetLatLng = L.latLng(lat, lng);
+            const offsetY = 230;
+            const offsetLatLng = map.unproject(
+                map.project(targetLatLng).subtract([0, offsetY])
+            );
+            map.setView(offsetLatLng, 6, { animate: true, duration: 1 });
+        });
+
+        card.addEventListener('click', function() {
+            cards.forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            // Centrar con offset también para click en tarjeta
+            const targetLatLng = L.latLng(lat, lng);
+            const offsetY = 230;
+            const offsetLatLng = map.unproject(
+                map.project(targetLatLng).subtract([0, offsetY])
+            );
+            map.setView(offsetLatLng, 6, { animate: true });
+        });
+
+        markers.push(marker);
+                    });
+            
+            // Ajustar vista para mostrar todos los marcadores
+            const group = new L.featureGroup(markers);
+            map.fitBounds(group.getBounds().pad(0.2));
+        }
+        
+        // Buscador
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const cards = document.querySelectorAll('.observatory-card');
+            let visibleCount = 0;
+            
+            cards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    card.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            // Mostrar mensaje si no hay resultados
+            const noResults = document.querySelector('.no-results');
+            if (visibleCount === 0) {
+                if (!noResults) {
+                    const grid = document.getElementById('observatoriesList');
+                    const message = document.createElement('div');
+                    message.className = 'no-results';
+                    message.innerHTML = '<i class="fas fa-search" style="font-size: 2rem; margin-bottom: 1rem;"></i><p>No se encontraron observatorios que coincidan con tu búsqueda</p>';
+                    grid.appendChild(message);
+                }
+            } else if (noResults) {
+                noResults.remove();
+            }
+        });
+        
+        // Inicializar todo al cargar la página
+        window.addEventListener('load', function() {
+            createStars();
+            initMap();
+        });
+    </script>
+</body>
+</html>
